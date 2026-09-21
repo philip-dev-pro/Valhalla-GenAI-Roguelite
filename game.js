@@ -73,13 +73,47 @@ function getCostBow() { return 30 + (state.tierBow * 15); }
 function getCostDef() { return 40 + (state.tierDef * 20); }
 
 // ==========================================
-// SYNTHESIZED WEB AUDIO SOUND ENGINE
+// SYNTHESIZED WEB AUDIO & SUNO MUSIC ENGINE
 // ==========================================
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    startAmbientMusic();
+  }
+}
+
+// ADAPTIVE SUNO MUSIC PLAYLIST
+const musicTracks = {
+  hub: 'audio/hub.mp3',
+  arenas: [
+    'audio/arena1.mp3' // Lägg till fler om du vill: 'audio/arena2.mp3'
+  ],
+  boss: 'audio/boss.mp3'
+};
+
+let currentTrackPlaying = '';
+
+function playAdaptiveMusic(category) {
+  if (!state.audioEnabled) return;
+  const audioEl = document.getElementById('bg-music');
+  if (!audioEl) return;
+
+  let nextSrc = '';
+  if (category === 'hub') {
+    nextSrc = musicTracks.hub;
+  } else if (category === 'arena') {
+    const randomIndex = Math.floor(Math.random() * musicTracks.arenas.length);
+    nextSrc = musicTracks.arenas[randomIndex];
+  } else if (category === 'boss') {
+    nextSrc = musicTracks.boss;
+  }
+
+  // Byt bara låt om den inte redan är igång
+  if (currentTrackPlaying !== nextSrc && nextSrc) {
+    currentTrackPlaying = nextSrc;
+    audioEl.src = nextSrc;
+    audioEl.volume = 0.25; // Lagom bakgrundsvolym
+    audioEl.play().catch(e => console.log("Audio autoplay prevented", e));
   }
 }
 
@@ -820,6 +854,7 @@ function spawnPillars(radius = 26, count = 8, pillarColor = 0x1f1b33) {
 }
 
 function buildSanctuary() {
+  playAdaptiveMusic('hub');
   state.currentZone = 'The Sanctuary (Hub)';
   state.arenaLevel = 0;
   state.hp = state.maxHp;
@@ -905,6 +940,11 @@ function buildSanctuary() {
 }
 
 function buildArenaForCurrentZone() {
+    if (state.arenaLevel === 5) {
+    playAdaptiveMusic('boss');  // Zon 5: Bossmusik!
+  } else {
+    playAdaptiveMusic('arena'); // Zon 1-4: Arenamusik!
+  }
   if (altarMesh) altarMesh.visible = false;
   if (portalGroup) portalGroup.visible = false;
   document.getElementById('interaction-prompt').classList.add('hidden');
@@ -1489,6 +1529,8 @@ function setupEvents() {
     state.isGameStarted = true;
     document.getElementById('main-menu').classList.add('hidden');
     document.getElementById('ui-layer').classList.remove('hidden');
+    currentTrackPlaying = ''; // Nollställ spåret så att webbläsaren tvingas starta om
+    playAdaptiveMusic('hub'); // <-- DENNA RAD STARTAR MUSIKEN!
     container.requestPointerLock();
   };
 
