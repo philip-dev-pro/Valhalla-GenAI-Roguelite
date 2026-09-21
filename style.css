@@ -23,6 +23,41 @@ body, html {
   z-index: 1;
 }
 
+/* =========================================
+   DAMAGE EFFECTS & LOW HEALTH VIGNETTE
+   ========================================= */
+.overlay-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 23, 68, 0.4);
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.15s ease-out;
+}
+
+.overlay-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  box-shadow: inset 0 0 100px 40px rgba(183, 28, 28, 0.75);
+  pointer-events: none;
+  z-index: 85;
+  animation: pulseVignette 1.2s infinite alternate;
+}
+
+@keyframes pulseVignette {
+  from { opacity: 0.6; }
+  to { opacity: 1.0; }
+}
+
+/* =========================================
+   MAIN MENU
+   ========================================= */
 .menu-overlay {
   position: absolute;
   top: 0;
@@ -118,6 +153,9 @@ body, html {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* =========================================
+   MODALS
+   ========================================= */
 .modal {
   position: absolute;
   top: 0;
@@ -187,6 +225,9 @@ body, html {
   color: #eceff1;
 }
 
+/* =========================================
+   HUD
+   ========================================= */
 #ui-layer {
   position: absolute;
   top: 0;

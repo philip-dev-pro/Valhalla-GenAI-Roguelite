@@ -8,6 +8,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+  <!-- DAMAGE FLASH & LOW HEALTH VIGNETTE OVERLAYS -->
+  <div id="damage-flash" class="overlay-flash hidden"></div>
+  <div id="low-hp-vignette" class="overlay-vignette hidden"></div>
+
   <!-- START / MAIN MENU -->
   <div id="main-menu" class="menu-overlay">
     <div class="menu-content">
@@ -19,6 +23,7 @@
         <button id="btn-start-game" class="btn-main">⚔️ ENTER VALHALLA</button>
         <button id="btn-open-controls" class="btn-secondary">📜 HOW TO PLAY & CONTROLS</button>
         <button id="btn-open-api" class="btn-secondary">⚙️ GENAI SETTINGS</button>
+        <button id="btn-toggle-audio" class="btn-secondary">🔊 SOUND & MUSIC: ON</button>
       </div>
       
       <div class="menu-footer">
@@ -30,21 +35,25 @@
   <!-- CONTROLS & HOW TO PLAY MODAL -->
   <div id="controls-modal" class="modal hidden">
     <div class="modal-content controls-content">
-      <h2>Combat Controls & Gameplay</h2>
-      <p style="color: #b0bec5; font-size: 14px; margin-bottom: 20px;">Master your twin weapons to conquer the Nine Realms.</p>
+      <h2>Combat Controls & Mechanics</h2>
+      <p style="color: #b0bec5; font-size: 14px; margin-bottom: 16px;">Master your twin weapons to conquer the Nine Realms.</p>
       
       <div class="controls-grid">
         <div class="control-row">
           <div class="key-badge">W A S D</div>
-          <span>Move & Strafe in all directions</span>
+          <span>Move & Strafe</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">SHIFT</div>
+          <span>Sprint (Boost Movement Speed)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">MOUSE</div>
-          <span>Look & Aim (Camera follows crosshair)</span>
+          <span>Look & Aim (3rd Person Camera)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">LEFT CLICK</div>
-          <span>Downward Sword Slash (28 Melee DMG)</span>
+          <span>Sword Slash (28 Melee DMG)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">RIGHT CLICK</div>
@@ -52,19 +61,15 @@
         </div>
         <div class="control-row">
           <div class="key-badge">SPACE</div>
-          <span>Jump (Crucial to dodge boss shockwaves!)</span>
+          <span>Jump (Dodge ground slam shockwaves!)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">E</div>
-          <span>Interact with Portal & Upgrade Altar</span>
-        </div>
-        <div class="control-row">
-          <div class="key-badge">ESC</div>
-          <span>Pause / Release Mouse Cursor</span>
+          <span>Interact with Portal & Altar</span>
         </div>
       </div>
 
-      <button id="btn-close-controls" class="btn-retro" style="margin-top: 20px;">Close</button>
+      <button id="btn-close-controls" class="btn-retro" style="margin-top: 18px;">Close</button>
     </div>
   </div>
 
@@ -119,10 +124,10 @@
     <div id="cleared-prompt" class="hidden">ZONE CLEARED! Step into the Portal to Advance</div>
 
     <div id="crosshair">+</div>
-    <div id="combat-hint">Left Click: Sword | Right Click: Crossbow | SPACE: Jump | E: Interact</div>
+    <div id="combat-hint">WASD: Move | SHIFT: Sprint | Left Click: Sword | Right Click: Crossbow | SPACE: Jump</div>
   </div>
 
-  <!-- Sanctuary Upgrade Altar Modal (Dynamic Cost Per Stat) -->
+  <!-- Sanctuary Upgrade Altar Modal -->
   <div id="altar-modal" class="modal hidden">
     <div class="modal-content">
       <h2>Altar of the Einherjar</h2>

@@ -1,19 +1,20 @@
 /* ==========================================================================
-   Aethelgard: Valhalla Trials - Threat Scaling & Balanced Roguelite Engine
+   Aethelgard: Valhalla Trials - Complete Polish & Web Audio Sound Engine
    ========================================================================== */
 
 function loadSavedProfile() {
   return {
     isGameStarted: false,
+    audioEnabled: true,
     maxHp: parseInt(localStorage.getItem('valhalla_max_hp') || '100'),
     hp: parseInt(localStorage.getItem('valhalla_max_hp') || '100'),
     attackDmg: parseInt(localStorage.getItem('valhalla_attack_dmg') || '28'),
     rangedDmg: parseInt(localStorage.getItem('valhalla_ranged_dmg') || '12'),
     defense: parseFloat(localStorage.getItem('valhalla_defense') || '0.0'),
+    baseSpeed: 0.09,
     speed: 0.09,
     essence: parseInt(localStorage.getItem('valhalla_essence') || '50'),
 
-    // Separate upgrade count per stat for escalating costs
     tierHp: parseInt(localStorage.getItem('valhalla_tier_hp') || '0'),
     tierDmg: parseInt(localStorage.getItem('valhalla_tier_dmg') || '0'),
     tierBow: parseInt(localStorage.getItem('valhalla_tier_bow') || '0'),
@@ -29,7 +30,6 @@ function loadSavedProfile() {
     modifierEnemySpeed: 1.0,
     modifierEnemyDmg: 1.0,
 
-    // Your pre-configured Gemini Key
     geminiApiKey: localStorage.getItem('valhalla_gemini_key') || '',
     activeRunLore: null
   };
@@ -50,7 +50,6 @@ function autoSaveProfile() {
   localStorage.setItem('valhalla_threat_level', state.threatLevel);
 }
 
-// Reset stats, threat, and costs back to baseline
 function resetRunAndStats() {
   state.maxHp = 100;
   state.hp = 100;
@@ -68,18 +67,122 @@ function resetRunAndStats() {
   alert('Stats, essence, and Threat Level reset to baseline Level 1!');
 }
 
-// Escalating upgrade costs (+15 Essence per tier)
 function getCostHp() { return 30 + (state.tierHp * 15); }
 function getCostDmg() { return 35 + (state.tierDmg * 15); }
 function getCostBow() { return 30 + (state.tierBow * 15); }
 function getCostDef() { return 40 + (state.tierDef * 20); }
 
+// ==========================================
+// SYNTHESIZED WEB AUDIO SOUND ENGINE
+// ==========================================
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    startAmbientMusic();
+  }
+}
+
+function playSound(type) {
+  if (!state.audioEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'sword') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (type === 'crossbow') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } else if (type === 'hit') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.1);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (type === 'player_hurt') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } else if (type === 'heal') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.25);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+  } catch (e) { console.warn("Audio err", e); }
+}
+
+// Low heartbeat drone
+let lastHeartbeatTime = 0;
+function checkHeartbeat(now) {
+  if (state.hp < state.maxHp * 0.35 && state.hp > 0 && state.audioEnabled && audioCtx) {
+    if (now - lastHeartbeatTime > 0.85) {
+      lastHeartbeatTime = now;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(65, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.25);
+    }
+  }
+}
+
+// Dark Ambient Synth Loop
+function startAmbientMusic() {
+  if (!audioCtx) return;
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.value = 55; // Dark low A
+  osc2.type = 'triangle';
+  osc2.frequency.value = 55.4; // Detuned drone
+  gain.gain.value = 0.08;
+  osc1.connect(gain);
+  osc2.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc1.start();
+  osc2.start();
+}
+
 // --- THREE.JS GLOBALS ---
 let scene, camera, renderer, clock;
 let playerGroup, swordMesh, rightArmGroup, leftArmGroup;
+let leftLegMesh, rightLegMesh;
 let enemies = [];
 let playerProjectiles = [];
 let enemyProjectiles = [];
+let healthPickups = []; // Floating health items!
 let shockwaves = [];
 let lightningTelegraphs = [];
 let portalGroup, altarMesh;
@@ -89,19 +192,21 @@ let directionalLight, ambientLight;
 let solidColliders = [];
 const MAP_BOUNDARY_RADIUS = 32;
 
-// Camera
+// Camera (Adjusted wider & taller per Raul's feedback)
 let isPointerLocked = false;
 let cameraYaw = 0;
-let cameraPitch = 0.26;
-const cameraDistance = 7.0;
-const cameraHeight = 2.4;
+let cameraPitch = 0.24;
+const cameraDistance = 8.5; // Wider field of view
+const cameraHeight = 3.0;
 
-// Physics
-const keys = { w: false, a: false, s: false, d: false };
+// Movement & Sprinting
+const keys = { w: false, a: false, s: false, d: false, shift: false };
 let playerVelocityY = 0;
 let isGrounded = true;
 const GRAVITY = -0.016;
 const JUMP_FORCE = 0.33;
+
+let walkCycleTimer = 0;
 
 // Combat
 let isAttacking = false;
@@ -152,7 +257,7 @@ function init() {
   animate();
 }
 
-// --- PLAYER RIG ---
+// --- PLAYER RIG (With Walking Limb Nodes) ---
 function createDualWieldPlayer() {
   playerGroup = new THREE.Group();
 
@@ -183,7 +288,7 @@ function createDualWieldPlayer() {
   visor.position.set(0, 2.35, 0.26);
   playerGroup.add(visor);
 
-  // Left Crossbow
+  // Left Crossbow Arm
   leftArmGroup = new THREE.Group();
   leftArmGroup.position.set(-0.65, 2.0, 0);
 
@@ -211,7 +316,7 @@ function createDualWieldPlayer() {
   leftArmGroup.add(bowGroup);
   playerGroup.add(leftArmGroup);
 
-  // Right Sword
+  // Right Sword Arm
   rightArmGroup = new THREE.Group();
   rightArmGroup.position.set(0.65, 2.0, 0);
 
@@ -252,29 +357,68 @@ function createDualWieldPlayer() {
   rightArmGroup.add(swordMesh);
   playerGroup.add(rightArmGroup);
 
-  // Legs
+  // Legs with pivot
   const legGeo = new THREE.BoxGeometry(0.35, 0.95, 0.35);
-  const leftLeg = new THREE.Mesh(legGeo, armorMat);
-  leftLeg.position.set(-0.24, 0.48, 0);
-  leftLeg.castShadow = true;
-  playerGroup.add(leftLeg);
+  leftLegMesh = new THREE.Mesh(legGeo, armorMat);
+  leftLegMesh.position.set(-0.24, 0.48, 0);
+  leftLegMesh.castShadow = true;
+  playerGroup.add(leftLegMesh);
 
-  const rightLeg = new THREE.Mesh(legGeo, armorMat);
-  rightLeg.position.set(0.24, 0.48, 0);
-  rightLeg.castShadow = true;
-  playerGroup.add(rightLeg);
+  rightLegMesh = new THREE.Mesh(legGeo, armorMat);
+  rightLegMesh.position.set(0.24, 0.48, 0);
+  rightLegMesh.castShadow = true;
+  playerGroup.add(rightLegMesh);
 
   playerGroup.position.set(0, 0, 4);
   scene.add(playerGroup);
 }
 
-// --- PLAYER RANGED ATTACK ---
+// --- HEALTH PICKUPS DROPS ---
+function spawnHealthPickup(pos) {
+  const group = new THREE.Group();
+  const geo = new THREE.OctahedronGeometry(0.35);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x00e676, emissive: 0x00b0ff, metalness: 0.8 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = 0.5;
+  group.add(mesh);
+
+  group.position.set(pos.x, 0, pos.z);
+  scene.add(group);
+  healthPickups.push({ group: group, mesh: mesh, life: 25.0 });
+}
+
+function updateHealthPickups(delta) {
+  for (let i = healthPickups.length - 1; i >= 0; i--) {
+    const pickup = healthPickups[i];
+    pickup.mesh.rotation.y += 0.03;
+    pickup.mesh.position.y = 0.5 + Math.sin(clock.getElapsedTime() * 4) * 0.1;
+    pickup.life -= delta;
+
+    // Picked up by player
+    if (playerGroup.position.distanceTo(pickup.group.position) < 1.6) {
+      state.hp = Math.min(state.maxHp, state.hp + 25);
+      playSound('heal');
+      updateHUD();
+      scene.remove(pickup.group);
+      healthPickups.splice(i, 1);
+      continue;
+    }
+
+    if (pickup.life <= 0) {
+      scene.remove(pickup.group);
+      healthPickups.splice(i, 1);
+    }
+  }
+}
+
+// --- COMBAT ACTIONS ---
 function shootCrossbow() {
   if (isDead || !state.isGameStarted) return;
   const now = clock.getElapsedTime();
   if (now - lastRangedShotTime < 0.35) return;
   lastRangedShotTime = now;
 
+  playSound('crossbow');
   leftArmGroup.position.z -= 0.12;
   setTimeout(() => { if (leftArmGroup) leftArmGroup.position.z += 0.12; }, 70);
 
@@ -306,6 +450,7 @@ function updatePlayerProjectiles(delta) {
       const verticalDist = Math.abs(p.mesh.position.y - (enemy.position.y + 0.8));
 
       if (horizontalDist <= enemy.userData.radius + 0.8 && verticalDist <= 2.2) {
+        playSound('hit');
         const damageToApply = enemy.userData.isBoss ? state.rangedDmg * 0.65 : state.rangedDmg;
         enemy.userData.hp -= damageToApply;
         updateEnemyHpSprite(enemy.userData.hpSprite, enemy.userData.hp, enemy.userData.maxHp);
@@ -319,6 +464,8 @@ function updatePlayerProjectiles(delta) {
 
         if (enemy.userData.hp <= 0) {
           state.essence += enemy.userData.isBoss ? 250 : 35;
+          // 25% chance to drop a healing pickup
+          if (Math.random() < 0.28) spawnHealthPickup(enemy.position);
           autoSaveProfile();
           scene.remove(enemy);
           enemies.splice(j, 1);
@@ -337,7 +484,6 @@ function updatePlayerProjectiles(delta) {
   }
 }
 
-// --- ENEMY ATTACKS (Scales heavily with Threat Level!) ---
 function shootEnemyProjectile(fromPos, targetPos, colorHex = 0xff1744, speed = 0.32, projectileDmg = 20) {
   const dir = new THREE.Vector3().subVectors(targetPos, fromPos);
   dir.y = 0;
@@ -364,6 +510,8 @@ function updateEnemyProjectiles(delta) {
       const distToPlayer = p.mesh.position.distanceTo(playerChestPos);
 
       if (distToPlayer < 1.3) {
+        triggerDamageFlash();
+        playSound('player_hurt');
         const baseDmg = p.mesh.userData.dmg || 20;
         const dmg = baseDmg * (1.0 - state.defense);
         state.hp -= dmg;
@@ -373,9 +521,7 @@ function updateEnemyProjectiles(delta) {
         scene.remove(p.mesh);
         enemyProjectiles.splice(i, 1);
 
-        if (state.hp <= 0 && !isDead) {
-          handleDeath();
-        }
+        if (state.hp <= 0 && !isDead) handleDeath();
         continue;
       }
     }
@@ -387,7 +533,12 @@ function updateEnemyProjectiles(delta) {
   }
 }
 
-// Double shockwave generator
+function triggerDamageFlash() {
+  const flash = document.getElementById('damage-flash');
+  flash.classList.remove('hidden');
+  setTimeout(() => flash.classList.add('hidden'), 120);
+}
+
 function triggerBossShockwave(pos, waveDamage = 50) {
   const createRing = (delay = 0) => {
     setTimeout(() => {
@@ -405,7 +556,7 @@ function triggerBossShockwave(pos, waveDamage = 50) {
   };
 
   createRing(0);
-  createRing(600); // Echo shockwave!
+  createRing(600);
 }
 
 function updateShockwaves(delta) {
@@ -419,6 +570,8 @@ function updateShockwaves(delta) {
     
     if (Math.abs(distToCenter - sw.radius) < 1.6 && state.spawnImmunityTimer <= 0) {
       if (playerGroup.position.y < 0.45) {
+        triggerDamageFlash();
+        playSound('player_hurt');
         const rawDmg = sw.mesh.userData.dmg || 50;
         const dmg = rawDmg * (1.0 - state.defense);
         state.hp -= dmg;
@@ -429,10 +582,7 @@ function updateShockwaves(delta) {
         playerGroup.position.addScaledVector(knockDir, 2.5);
 
         sw.radius = sw.maxRadius;
-
-        if (state.hp <= 0 && !isDead) {
-          handleDeath();
-        }
+        if (state.hp <= 0 && !isDead) handleDeath();
       }
     }
 
@@ -472,6 +622,8 @@ function updateLightning(delta) {
 
       const dist = Math.hypot(playerGroup.position.x - lt.x, playerGroup.position.z - lt.z);
       if (dist <= 2.2 && state.spawnImmunityTimer <= 0) {
+        triggerDamageFlash();
+        playSound('player_hurt');
         const rawDmg = lt.mesh.userData.dmg || 45;
         const dmg = rawDmg * (1.0 - state.defense);
         state.hp -= dmg;
@@ -513,7 +665,7 @@ function updateEnemyHpSprite(sprite, currentHp, maxHp) {
   texture.needsUpdate = true;
 }
 
-// --- ENEMY SPAWNING WITH PROPER THREAT LEVEL DAMAGE SCALING ---
+// --- ENEMY SPAWNING ---
 function spawnEnemiesForLevel(level) {
   clearEnemies();
   clearProjectiles();
@@ -525,11 +677,8 @@ function spawnEnemiesForLevel(level) {
   graceBanner.classList.remove('hidden');
 
   const isBoss = (level === 5);
-
-  // **POINT 2 FIX: THREAT LEVEL SCALING (+35% damage per Threat Level)**
   const threatScaleHp = 1.0 + ((state.threatLevel - 1) * 0.40);
   const threatScaleDmg = 1.0 + ((state.threatLevel - 1) * 0.35);
-
   const count = isBoss ? 1 : 2 + level + Math.floor(state.threatLevel * 0.5);
 
   const realmLore = state.activeRunLore || {
@@ -582,8 +731,6 @@ function spawnEnemiesForLevel(level) {
     group.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
 
     const baseHp = isBoss ? (750 * threatScaleHp) : ((40 + (level * 16)) * threatScaleHp);
-    
-    // Scaled damage based on Threat Level and Zone level
     const baseDmg = (16 + (level * 2.5)) * threatScaleDmg * state.modifierEnemyDmg;
 
     group.userData = {
@@ -622,6 +769,8 @@ function clearProjectiles() {
   shockwaves = [];
   lightningTelegraphs.forEach(l => scene.remove(l.mesh));
   lightningTelegraphs = [];
+  healthPickups.forEach(h => scene.remove(h.group));
+  healthPickups = [];
 }
 
 // --- WORLD GENERATION ---
@@ -689,6 +838,7 @@ function buildSanctuary() {
   document.getElementById('grace-banner').classList.add('hidden');
   document.getElementById('death-screen').classList.add('hidden');
   document.getElementById('victory-screen').classList.add('hidden');
+  document.getElementById('low-hp-vignette').classList.add('hidden');
 
   scene.background = new THREE.Color(0x0a0814);
   scene.fog.color = new THREE.Color(0x0a0814);
@@ -746,6 +896,7 @@ function buildSanctuary() {
   portalGroup.position.set(14, 0, 0);
   solidColliders.push({ x: 14, z: 0, radius: 1.2 });
 
+  // Safe spawn point in Sanctuary
   if (playerGroup) {
     playerGroup.position.set(0, 0, 4);
     playerVelocityY = 0;
@@ -775,7 +926,8 @@ function buildArenaForCurrentZone() {
   createTiledGround(adjustedColor, 75);
   spawnPillars(30, 10, adjustedColor);
 
-  playerGroup.position.set(0, 0, 20);
+  // Garanterad säker och rymlig spawn (Fixar Rauls teleporteringsbugg)
+  playerGroup.position.set(0, 0, 18);
   playerVelocityY = 0;
 
   spawnEnemiesForLevel(state.arenaLevel);
@@ -826,11 +978,10 @@ async function triggerGenAIRun() {
       applyAITheme(parsed);
       return;
     } catch (err) {
-      console.warn("Gemini API error, using procedural fallback.", err);
+      console.warn("Gemini API error, fallback active.", err);
     }
   }
 
-  // Fallback
   setTimeout(() => {
     const proceduralRealms = [
       {
@@ -906,6 +1057,9 @@ function applyAITheme(theme) {
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
+  const now = clock.getElapsedTime();
+
+  checkHeartbeat(now);
 
   if (state.spawnImmunityTimer > 0) {
     state.spawnImmunityTimer -= delta;
@@ -916,9 +1070,10 @@ function animate() {
 
   if (!isDead && state.isGameStarted) {
     updatePlayerPhysics();
-    updatePlayerMovement();
+    updatePlayerMovement(delta);
     updatePlayerProjectiles(delta);
     updateEnemyProjectiles(delta);
+    updateHealthPickups(delta);
     updateShockwaves(delta);
     updateLightning(delta);
     updateEnemies(delta);
@@ -930,7 +1085,7 @@ function animate() {
     const crystal = altarMesh.getObjectByName('altarCrystal');
     if (crystal) {
       crystal.rotation.y += 0.02;
-      crystal.position.y = 2.2 + Math.sin(clock.getElapsedTime() * 2) * 0.12;
+      crystal.position.y = 2.2 + Math.sin(now * 2) * 0.12;
     }
   }
 
@@ -950,7 +1105,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// --- CAMERA & AIM ---
+// --- CAMERA & STRICT AIM CLAMP (Fixar 360-musbuggen) ---
 function updateCameraAndPlayerAim() {
   if (!playerGroup) return;
 
@@ -967,7 +1122,7 @@ function updateCameraAndPlayerAim() {
   camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.6, playerGroup.position.z);
 }
 
-// --- PHYSICS & STRAFING ---
+// --- PHYSICS, SPRINT & WALKING ANIMATION ---
 function updatePlayerPhysics() {
   if (!playerGroup) return;
 
@@ -983,8 +1138,11 @@ function updatePlayerPhysics() {
   }
 }
 
-function updatePlayerMovement() {
+function updatePlayerMovement(delta) {
   if (!playerGroup) return;
+
+  // Sprint multiplier (+45% speed on Shift)
+  state.speed = keys.shift ? state.baseSpeed * 1.45 : state.baseSpeed;
 
   const forwardX = Math.sin(cameraYaw);
   const forwardZ = Math.cos(cameraYaw);
@@ -1001,6 +1159,11 @@ function updatePlayerMovement() {
 
   const len = Math.hypot(moveX, moveZ);
   if (len > 0) {
+    // Walking limb bobbing animation!
+    walkCycleTimer += delta * (keys.shift ? 15 : 10);
+    leftLegMesh.rotation.x = Math.sin(walkCycleTimer) * 0.5;
+    rightLegMesh.rotation.x = -Math.sin(walkCycleTimer) * 0.5;
+
     moveX = (moveX / len) * state.speed;
     moveZ = (moveZ / len) * state.speed;
 
@@ -1020,6 +1183,10 @@ function updatePlayerMovement() {
         playerGroup.position.z = nextZ;
       }
     }
+  } else {
+    // Reset legs to idle
+    leftLegMesh.rotation.x = 0;
+    rightLegMesh.rotation.x = 0;
   }
 }
 
@@ -1028,6 +1195,7 @@ function triggerMeleeAttack() {
   if (isAttacking || isDead || !state.isGameStarted) return;
   isAttacking = true;
   attackTimer = 0;
+  playSound('sword');
 
   const hitRange = 3.6;
   const attackArc = Math.PI * 0.75;
@@ -1042,6 +1210,7 @@ function triggerMeleeAttack() {
       const angle = playerForward.angleTo(toEnemy);
 
       if (angle <= attackArc / 2) {
+        playSound('hit');
         enemy.userData.hp -= state.attackDmg;
         updateEnemyHpSprite(enemy.userData.hpSprite, enemy.userData.hp, enemy.userData.maxHp);
 
@@ -1054,6 +1223,7 @@ function triggerMeleeAttack() {
 
         if (enemy.userData.hp <= 0) {
           state.essence += enemy.userData.isBoss ? 250 : 35;
+          if (Math.random() < 0.28) spawnHealthPickup(enemy.position);
           autoSaveProfile();
           scene.remove(enemy);
           enemies.splice(i, 1);
@@ -1077,11 +1247,9 @@ function updateEnemies(delta) {
       enemy.userData.attackCooldown -= delta;
     }
 
-    // BOSS LOGIC
     if (enemy.userData.isBoss) {
       enemy.userData.specialAttackTimer -= delta;
 
-      // BOSS 1: SLAMMER (Shockwaves scale with Threat!)
       if (enemy.userData.bossClass === 'slammer') {
         if (enemy.userData.specialAttackTimer <= 0 && enemy.userData.jumpState === 'ground') {
           enemy.userData.jumpState = 'jumping';
@@ -1100,14 +1268,12 @@ function updateEnemies(delta) {
           }
         }
       }
-      // BOSS 2: LIGHTNING
       else if (enemy.userData.bossClass === 'lightning') {
         if (enemy.userData.specialAttackTimer <= 0) {
           enemy.userData.specialAttackTimer = 3.8;
           triggerLightningStrike(playerGroup.position, Math.round(45 * threatScaleDmg));
         }
       }
-      // BOSS 3: ARCHER
       else if (enemy.userData.bossClass === 'archer') {
         if (enemy.userData.specialAttackTimer <= 0 && state.spawnImmunityTimer <= 0) {
           enemy.userData.specialAttackTimer = 3.2;
@@ -1123,7 +1289,6 @@ function updateEnemies(delta) {
       }
     }
 
-    // SNIPER MOB
     if (enemy.userData.isSniper) {
       const toPlayer = new THREE.Vector3().subVectors(playerGroup.position, enemy.position);
       const dist = toPlayer.length();
@@ -1144,7 +1309,6 @@ function updateEnemies(delta) {
       continue;
     }
 
-    // MELEE MOB
     const toPlayer = new THREE.Vector3().subVectors(playerGroup.position, enemy.position);
     toPlayer.y = 0;
     const distToPlayer = toPlayer.length();
@@ -1155,6 +1319,8 @@ function updateEnemies(delta) {
       enemy.lookAt(playerGroup.position.x, enemy.position.y, playerGroup.position.z);
     } else {
       if (enemy.userData.attackCooldown <= 0 && state.spawnImmunityTimer <= 0) {
+        triggerDamageFlash();
+        playSound('player_hurt');
         const effectiveDamage = enemy.userData.damage * (1.0 - state.defense);
         state.hp -= effectiveDamage;
         enemy.userData.attackCooldown = 1.2;
@@ -1285,7 +1451,7 @@ function interact() {
   }
 }
 
-// --- HUD & STATS ---
+// --- HUD & STATS (Shows Low HP Vignette) ---
 function updateHUD() {
   const hpPercent = Math.max(0, (state.hp / state.maxHp) * 100);
   document.getElementById('hp-bar').style.width = `${hpPercent}%`;
@@ -1295,12 +1461,19 @@ function updateHUD() {
   document.getElementById('zone-text').innerText = state.currentZone;
   document.getElementById('threat-level-hud').innerText = `Level ${state.threatLevel}`;
 
+  // Low HP Vignette Warning
+  const vignette = document.getElementById('low-hp-vignette');
+  if (state.hp < state.maxHp * 0.35 && state.hp > 0) {
+    vignette.classList.remove('hidden');
+  } else {
+    vignette.classList.add('hidden');
+  }
+
   document.getElementById('stat-maxhp').innerText = state.maxHp;
   document.getElementById('stat-dmg').innerText = state.attackDmg;
   document.getElementById('stat-bow').innerText = state.rangedDmg;
   document.getElementById('stat-def').innerText = `${Math.round(state.defense * 100)}%`;
 
-  // Update dynamic costs in altar
   document.getElementById('cost-hp').innerText = getCostHp();
   document.getElementById('cost-dmg').innerText = getCostDmg();
   document.getElementById('cost-bow').innerText = getCostBow();
@@ -1311,8 +1484,8 @@ function updateHUD() {
 function setupEvents() {
   const container = document.getElementById('canvas-container');
 
-  // MAIN MENU ACTIONS
   document.getElementById('btn-start-game').onclick = () => {
+    initAudio();
     state.isGameStarted = true;
     document.getElementById('main-menu').classList.add('hidden');
     document.getElementById('ui-layer').classList.remove('hidden');
@@ -1333,12 +1506,15 @@ function setupEvents() {
     if (state.isGameStarted) container.requestPointerLock();
   };
 
-  // RESET RUN & STATS IN ALTAR
+  document.getElementById('btn-toggle-audio').onclick = () => {
+    state.audioEnabled = !state.audioEnabled;
+    document.getElementById('btn-toggle-audio').innerText = state.audioEnabled ? "🔊 SOUND & MUSIC: ON" : "🔇 SOUND & MUSIC: OFF";
+  };
+
   document.getElementById('btn-reset-run').onclick = () => {
     resetRunAndStats();
   };
 
-  // GENAI MODAL & AUTOFILL
   document.getElementById('btn-open-api').onclick = () => {
     document.getElementById('input-api-key').value = state.geminiApiKey;
     document.getElementById('key-modal').classList.remove('hidden');
@@ -1366,7 +1542,6 @@ function setupEvents() {
     if (state.isGameStarted) container.requestPointerLock();
   };
 
-  // MOUSE LOCK
   container.addEventListener('click', () => {
     if (state.isGameStarted) container.requestPointerLock();
   });
@@ -1375,13 +1550,14 @@ function setupEvents() {
     isPointerLocked = (document.pointerLockElement === container);
   });
 
+  // Strict clamp preventing 360-degree pitch flipping
   window.addEventListener('mousemove', (e) => {
     if (!isPointerLocked || isDead || !state.isGameStarted) return;
 
     const sensitivity = 0.0022;
     cameraYaw -= e.movementX * sensitivity;
     cameraPitch += e.movementY * sensitivity;
-    cameraPitch = Math.max(-0.15, Math.min(1.0, cameraPitch));
+    cameraPitch = Math.max(-0.10, Math.min(0.85, cameraPitch));
   });
 
   window.addEventListener('mousedown', (e) => {
@@ -1403,6 +1579,7 @@ function setupEvents() {
     if (e.code === 'KeyS') keys.s = true;
     if (e.code === 'KeyA') keys.a = true;
     if (e.code === 'KeyD') keys.d = true;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
 
     if (e.code === 'Space') {
       if (isGrounded && !isDead) {
@@ -1421,6 +1598,7 @@ function setupEvents() {
     if (e.code === 'KeyS') keys.s = false;
     if (e.code === 'KeyA') keys.a = false;
     if (e.code === 'KeyD') keys.d = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
   });
 
   window.addEventListener('resize', () => {
@@ -1429,7 +1607,7 @@ function setupEvents() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Altar upgrades with escalating costs per stat
+  // Altar upgrades
   document.getElementById('buy-hp').onclick = () => {
     const cost = getCostHp();
     if (state.essence >= cost) {
