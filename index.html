@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aethelgard: Valhalla Trials (GenAI Roguelite)</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- START / MAIN MENU -->
+  <div id="main-menu" class="menu-overlay">
+    <div class="menu-content">
+      <h1 class="menu-title">AETHELGARD</h1>
+      <h2 class="menu-subtitle">VALHALLA TRIALS</h2>
+      <p class="menu-tagline">A 3D Generative AI Roguelite deployed on AWS</p>
+      
+      <div class="menu-btn-group">
+        <button id="btn-start-game" class="btn-main">⚔️ ENTER VALHALLA</button>
+        <button id="btn-open-controls" class="btn-secondary">📜 HOW TO PLAY & CONTROLS</button>
+        <button id="btn-open-api" class="btn-secondary">⚙️ GENAI SETTINGS</button>
+      </div>
+      
+      <div class="menu-footer">
+        Powered by Three.js & Google Gemini Generative AI Engine | AWS Level 3 Architecture
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROLS & HOW TO PLAY MODAL -->
+  <div id="controls-modal" class="modal hidden">
+    <div class="modal-content controls-content">
+      <h2>Combat Controls & Gameplay</h2>
+      <p style="color: #b0bec5; font-size: 14px; margin-bottom: 20px;">Master your twin weapons to conquer the Nine Realms.</p>
+      
+      <div class="controls-grid">
+        <div class="control-row">
+          <div class="key-badge">W A S D</div>
+          <span>Move & Strafe in all directions</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">MOUSE</div>
+          <span>Look & Aim (Camera follows crosshair)</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">LEFT CLICK</div>
+          <span>Downward Sword Slash (28 Melee DMG)</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">RIGHT CLICK</div>
+          <span>Rune Crossbow (Precision Ranged DMG)</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">SPACE</div>
+          <span>Jump (Crucial to dodge boss shockwaves!)</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">E</div>
+          <span>Interact with Portal & Upgrade Altar</span>
+        </div>
+        <div class="control-row">
+          <div class="key-badge">ESC</div>
+          <span>Pause / Release Mouse Cursor</span>
+        </div>
+      </div>
+
+      <button id="btn-close-controls" class="btn-retro" style="margin-top: 20px;">Close</button>
+    </div>
+  </div>
+
+  <!-- IN-GAME HUD -->
+  <div id="ui-layer" class="hidden">
+    <div id="top-bar">
+      <div id="stats-hud">
+        <div class="hud-item">HP: <div class="bar-container"><div id="hp-bar"></div></div> <span id="hp-text">100/100</span></div>
+        <div class="hud-item">DEF: <span id="def-stat-hud">0%</span> 🛡️</div>
+        <div class="hud-item">Essence: <span id="essence-count">50</span> 🪙</div>
+        <div class="hud-item">Zone: <span id="zone-text">The Sanctuary</span></div>
+        <div class="hud-item" style="color: #ff9800;">Threat: <span id="threat-level-hud">Level 1</span> ⚔️</div>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="hud-btn-controls" class="btn-retro">📜 Controls</button>
+        <button id="btn-api-key" class="btn-retro">⚙️ GenAI Key</button>
+      </div>
+    </div>
+
+    <!-- Grace period notification -->
+    <div id="grace-banner" class="hidden">⚡ SPAWN IMMUNITY ACTIVE ⚡</div>
+
+    <!-- Death Screen Overlay -->
+    <div id="death-screen" class="hidden">
+      <h1>YOU HAVE FALLEN</h1>
+      <p>The Valkyries retrieve your soul. Spend collected Essence at the Altar.</p>
+    </div>
+
+    <!-- Victory Screen Overlay -->
+    <div id="victory-screen" class="hidden">
+      <h1 style="color: #ffd700;">VALHALLA CONQUERED!</h1>
+      <p>You severed the threads of fate. But the Nine Realms grow darker...</p>
+      <p style="color: #ff9800; font-weight: bold; margin-top: 10px;">Threat Level Increased! Next run will feature fiercer adversaries.</p>
+    </div>
+
+    <!-- AI Lore Banner -->
+    <div id="ai-banner" class="hidden">
+      <h2 id="ai-realm-title">Realm: Unknown</h2>
+      <p id="ai-realm-lore">Connecting to Weaver of Fates...</p>
+      <div id="ai-realm-modifier">Modifier: None</div>
+    </div>
+
+    <!-- Boss Banner & Dialog -->
+    <div id="boss-banner" class="hidden">
+      <h1 id="boss-name">THE DREAD LORD</h1>
+      <p id="boss-dialogue">"You dare enter my domain, mortal?"</p>
+      <p id="boss-warning" style="color: #ff5252; font-size: 13px; font-weight: bold; margin-top: 4px;">⚠️ Watch boss attack tells carefully!</p>
+    </div>
+
+    <!-- Prompts -->
+    <div id="interaction-prompt" class="hidden">Press <span class="key-badge">E</span> to Interact</div>
+    <div id="cleared-prompt" class="hidden">ZONE CLEARED! Step into the Portal to Advance</div>
+
+    <div id="crosshair">+</div>
+    <div id="combat-hint">Left Click: Sword | Right Click: Crossbow | SPACE: Jump | E: Interact</div>
+  </div>
+
+  <!-- Sanctuary Upgrade Altar Modal (Dynamic Cost Per Stat) -->
+  <div id="altar-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Altar of the Einherjar</h2>
+      <p>Spend collected Essence to forge permanent might across your runs.</p>
+      <div class="upgrade-grid">
+        <div class="upgrade-card">
+          <h3>Max Vitality</h3>
+          <p>Current: <span id="stat-maxhp">100</span></p>
+          <button id="buy-hp" class="btn-retro">Upgrade (+20 HP) - <span id="cost-hp">30</span> 🪙</button>
+        </div>
+        <div class="upgrade-card">
+          <h3>Blade Mastery</h3>
+          <p>Current: <span id="stat-dmg">28</span></p>
+          <button id="buy-dmg" class="btn-retro">Upgrade (+8 Melee) - <span id="cost-dmg">35</span> 🪙</button>
+        </div>
+        <div class="upgrade-card">
+          <h3>Rune Crossbow</h3>
+          <p>Current: <span id="stat-bow">12</span></p>
+          <button id="buy-bow" class="btn-retro">Upgrade (+4 Ranged) - <span id="cost-bow">30</span> 🪙</button>
+        </div>
+        <div class="upgrade-card">
+          <h3>Rune Armor (DEF)</h3>
+          <p>Current: <span id="stat-def">0%</span></p>
+          <button id="buy-def" class="btn-retro">Upgrade (+5% Armor) - <span id="cost-def">40</span> 🪙</button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
+        <button id="btn-reset-run" class="btn-retro" style="border-color: #ff9800; color: #ffb74d;">🔄 Reset Run & Stats</button>
+        <button id="close-altar" class="btn-retro">Exit Altar (ESC)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="key-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Generative AI Engine Settings</h2>
+      <p>Your Google Gemini API Key is stored and ready to weave live procedural realms.</p>
+      <input type="password" id="input-api-key" placeholder="Paste Gemini API Key here..." />
+      <div style="margin-top: 15px;">
+        <button id="save-key" class="btn-retro">Save Key</button>
+        <button id="close-key" class="btn-retro">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <script src="game.js"></script>
+</body>
+</html>
