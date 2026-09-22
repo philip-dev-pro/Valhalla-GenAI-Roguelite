@@ -31,7 +31,7 @@ function loadSavedProfile() {
     modifierEnemySpeed: 1.0,
     modifierEnemyDmg: 1.0,
 
-    geminiApiKey: localStorage.getItem('valhalla_gemini_key') || 'AQ.Ab8RN6K7z1K2QL4KSzthgCnXuYb3qMKGhicvAUrTdTas2kyZ3A',
+    geminiApiKey: localStorage.getItem('valhalla_gemini_key') || '',
     activeRunLore: null
   };
 }
