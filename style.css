@@ -23,9 +23,60 @@ body, html {
   z-index: 1;
 }
 
-/* =========================================
-   DAMAGE EFFECTS & LOW HEALTH VIGNETTE
-   ========================================= */
+/* INTRO CUTSCENE */
+#intro-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(4, 3, 8, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 95;
+  animation: fadeIn 1.2s ease-in-out;
+}
+
+.intro-box {
+  max-width: 680px;
+  text-align: center;
+  padding: 40px;
+  background: radial-gradient(circle, rgba(25, 20, 45, 0.7) 0%, rgba(5, 5, 10, 0.95) 100%);
+  border: 1px solid #7c4dff;
+  border-radius: 12px;
+  box-shadow: 0 0 50px rgba(124, 77, 255, 0.4);
+}
+
+#intro-title {
+  font-size: 26px;
+  color: #ffca28;
+  letter-spacing: 4px;
+  margin-bottom: 18px;
+}
+
+#intro-text {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #cfd8dc;
+  font-style: italic;
+  margin-bottom: 25px;
+}
+
+#intro-prompt {
+  font-size: 14px;
+  color: #80d8ff;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  animation: pulsePrompt 1.4s infinite alternate;
+}
+
+@keyframes pulsePrompt {
+  from { opacity: 0.5; transform: scale(0.98); }
+  to { opacity: 1.0; transform: scale(1.02); }
+}
+
+/* OVERLAYS */
 .overlay-flash {
   position: absolute;
   top: 0;
@@ -55,9 +106,7 @@ body, html {
   to { opacity: 1.0; }
 }
 
-/* =========================================
-   MAIN MENU
-   ========================================= */
+/* MAIN MENU */
 .menu-overlay {
   position: absolute;
   top: 0;
@@ -153,9 +202,7 @@ body, html {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* =========================================
-   MODALS
-   ========================================= */
+/* MODALS */
 .modal {
   position: absolute;
   top: 0;
@@ -225,9 +272,7 @@ body, html {
   color: #eceff1;
 }
 
-/* =========================================
-   HUD
-   ========================================= */
+/* HUD */
 #ui-layer {
   position: absolute;
   top: 0;

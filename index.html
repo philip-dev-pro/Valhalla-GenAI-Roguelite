@@ -8,9 +8,18 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- DAMAGE FLASH & LOW HEALTH VIGNETTE OVERLAYS -->
+  <!-- DAMAGE FLASH & LOW HEALTH VIGNETTE -->
   <div id="damage-flash" class="overlay-flash hidden"></div>
   <div id="low-hp-vignette" class="overlay-vignette hidden"></div>
+
+  <!-- INTRO CUTSCENE OVERLAY -->
+  <div id="intro-screen" class="hidden">
+    <div class="intro-box">
+      <h2 id="intro-title">PROLOGUE: THE BROKEN SOUL</h2>
+      <p id="intro-text">Odin's throne has cracked. The Valkyries carry your soul to Aethelgard, the proving ground of eternal champions. Only by severing the threads of fate woven by the Generative AI Oracle may you reclaim divine grace...</p>
+      <div id="intro-prompt">Press <span class="key-badge">SPACE</span> or Click to Awaken</div>
+    </div>
+  </div>
 
   <!-- START / MAIN MENU -->
   <div id="main-menu" class="menu-overlay">
@@ -27,7 +36,7 @@
       </div>
       
       <div class="menu-footer">
-        Powered by Three.js & Google Gemini Generative AI Engine | AWS Level 3 Architecture
+        Powered by Three.js, Suno & Google Gemini Generative AI Engine | AWS Level 3 Architecture
       </div>
     </div>
   </div>
@@ -35,13 +44,13 @@
   <!-- CONTROLS & HOW TO PLAY MODAL -->
   <div id="controls-modal" class="modal hidden">
     <div class="modal-content controls-content">
-      <h2>Combat Controls & Mechanics</h2>
+      <h2>Combat Controls & Gameplay</h2>
       <p style="color: #b0bec5; font-size: 14px; margin-bottom: 16px;">Master your twin weapons to conquer the Nine Realms.</p>
       
       <div class="controls-grid">
         <div class="control-row">
           <div class="key-badge">W A S D</div>
-          <span>Move & Strafe</span>
+          <span>Move & Strafe in all directions</span>
         </div>
         <div class="control-row">
           <div class="key-badge">SHIFT</div>
@@ -49,11 +58,11 @@
         </div>
         <div class="control-row">
           <div class="key-badge">MOUSE</div>
-          <span>Look & Aim (3rd Person Camera)</span>
+          <span>Look & Aim (Follow Camera)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">LEFT CLICK</div>
-          <span>Sword Slash (28 Melee DMG)</span>
+          <span>Downward Sword Slash (28 Melee DMG)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">RIGHT CLICK</div>
@@ -61,11 +70,11 @@
         </div>
         <div class="control-row">
           <div class="key-badge">SPACE</div>
-          <span>Jump (Dodge ground slam shockwaves!)</span>
+          <span>Jump (Crucial to dodge boss shockwaves!)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">E</div>
-          <span>Interact with Portal & Altar</span>
+          <span>Interact with Portal & Upgrade Altar</span>
         </div>
       </div>
 
@@ -175,7 +184,6 @@
   </div>
 
   <div id="canvas-container"></div>
-
   <audio id="bg-music" loop preload="auto"></audio>
 
   <script src="game.js"></script>
