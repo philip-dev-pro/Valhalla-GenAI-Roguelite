@@ -23,6 +23,40 @@ body, html {
   z-index: 1;
 }
 
+/* BUFF BADGES */
+#buff-bar {
+  position: absolute;
+  top: 70px;
+  left: 28px;
+  display: flex;
+  gap: 10px;
+  z-index: 50;
+}
+
+.buff-badge {
+  background: rgba(0, 229, 255, 0.2);
+  border: 1px solid #00e5ff;
+  color: #80d8ff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+.buff-badge.berserk {
+  background: rgba(224, 64, 251, 0.25);
+  border-color: #e040fb;
+  color: #ea80fc;
+  box-shadow: 0 0 10px rgba(224, 64, 251, 0.6);
+  animation: pulseBuff 0.8s infinite alternate;
+}
+
+@keyframes pulseBuff {
+  from { transform: scale(0.98); }
+  to { transform: scale(1.04); }
+}
+
 /* INTRO CUTSCENE */
 #intro-screen {
   position: absolute;

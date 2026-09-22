@@ -8,20 +8,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- DAMAGE FLASH & LOW HEALTH VIGNETTE -->
+  <!-- OVERLAYS -->
   <div id="damage-flash" class="overlay-flash hidden"></div>
   <div id="low-hp-vignette" class="overlay-vignette hidden"></div>
 
-  <!-- INTRO CUTSCENE OVERLAY -->
+  <!-- INTRO CUTSCENE -->
   <div id="intro-screen" class="hidden">
     <div class="intro-box">
       <h2 id="intro-title">PROLOGUE: THE BROKEN SOUL</h2>
-      <p id="intro-text">Odin's throne has cracked. The Valkyries carry your soul to Aethelgard, the proving ground of eternal champions. Only by severing the threads of fate woven by the Generative AI Oracle may you reclaim divine grace...</p>
+      <p id="intro-text">Odin's throne has cracked. The Valkyries carry your soul to Aethelgard. Only by severing the threads of fate woven by the Generative AI Oracle may you reclaim divine grace...</p>
       <div id="intro-prompt">Press <span class="key-badge">SPACE</span> or Click to Awaken</div>
     </div>
   </div>
 
-  <!-- START / MAIN MENU -->
+  <!-- MAIN MENU -->
   <div id="main-menu" class="menu-overlay">
     <div class="menu-content">
       <h1 class="menu-title">AETHELGARD</h1>
@@ -41,11 +41,11 @@
     </div>
   </div>
 
-  <!-- CONTROLS & HOW TO PLAY MODAL -->
+  <!-- CONTROLS MODAL -->
   <div id="controls-modal" class="modal hidden">
     <div class="modal-content controls-content">
-      <h2>Combat Controls & Gameplay</h2>
-      <p style="color: #b0bec5; font-size: 14px; margin-bottom: 16px;">Master your twin weapons to conquer the Nine Realms.</p>
+      <h2>Combat Controls & Mechanics</h2>
+      <p style="color: #b0bec5; font-size: 14px; margin-bottom: 16px;">Master your weapons and tactical dash to conquer the realms.</p>
       
       <div class="controls-grid">
         <div class="control-row">
@@ -53,8 +53,8 @@
           <span>Move & Strafe in all directions</span>
         </div>
         <div class="control-row">
-          <div class="key-badge">SHIFT</div>
-          <span>Sprint (Boost Movement Speed)</span>
+          <div class="key-badge">SHIFT / Q</div>
+          <span>Tactical Dash (Invulnerability I-Frames!)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">MOUSE</div>
@@ -62,15 +62,15 @@
         </div>
         <div class="control-row">
           <div class="key-badge">LEFT CLICK</div>
-          <span>Downward Sword Slash (28 Melee DMG)</span>
+          <span>Sword Slash (28 Melee DMG)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">RIGHT CLICK</div>
-          <span>Rune Crossbow (Precision Ranged DMG)</span>
+          <span>Rune Crossbow (Shoots down enemy projectiles!)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">SPACE</div>
-          <span>Jump (Crucial to dodge boss shockwaves!)</span>
+          <span>High Jump (Dodge full-arena shockwaves!)</span>
         </div>
         <div class="control-row">
           <div class="key-badge">E</div>
@@ -98,16 +98,21 @@
       </div>
     </div>
 
-    <!-- Grace period notification -->
+    <!-- Active Buffs Indicator -->
+    <div id="buff-bar">
+      <div id="buff-shield" class="buff-badge hidden">🛡️ Shield: <span id="shield-count">0</span> hits</div>
+      <div id="buff-berserk" class="buff-badge berserk hidden">⚡ FURY 2X DMG</div>
+    </div>
+
+    <!-- Grace notification -->
     <div id="grace-banner" class="hidden">⚡ SPAWN IMMUNITY ACTIVE ⚡</div>
 
-    <!-- Death Screen Overlay -->
+    <!-- Death & Victory -->
     <div id="death-screen" class="hidden">
       <h1>YOU HAVE FALLEN</h1>
       <p>The Valkyries retrieve your soul. Spend collected Essence at the Altar.</p>
     </div>
 
-    <!-- Victory Screen Overlay -->
     <div id="victory-screen" class="hidden">
       <h1 style="color: #ffd700;">VALHALLA CONQUERED!</h1>
       <p>You severed the threads of fate. But the Nine Realms grow darker...</p>
@@ -133,7 +138,7 @@
     <div id="cleared-prompt" class="hidden">ZONE CLEARED! Step into the Portal to Advance</div>
 
     <div id="crosshair">+</div>
-    <div id="combat-hint">WASD: Move | SHIFT: Sprint | Left Click: Sword | Right Click: Crossbow | SPACE: Jump</div>
+    <div id="combat-hint">WASD: Move | SHIFT: Dash (I-Frames) | Left Click: Sword | Right Click: Crossbow | SPACE: Jump</div>
   </div>
 
   <!-- Sanctuary Upgrade Altar Modal -->
@@ -153,9 +158,9 @@
           <button id="buy-dmg" class="btn-retro">Upgrade (+8 Melee) - <span id="cost-dmg">35</span> 🪙</button>
         </div>
         <div class="upgrade-card">
-          <h3>Rune Crossbow</h3>
-          <p>Current: <span id="stat-bow">12</span></p>
-          <button id="buy-bow" class="btn-retro">Upgrade (+4 Ranged) - <span id="cost-bow">30</span> 🪙</button>
+          <h3>Rune Crossbow (Volley)</h3>
+          <p>Current: <span id="stat-bow">12</span> DMG (Volley <span id="stat-volley">1</span>x)</p>
+          <button id="buy-bow" class="btn-retro">Upgrade (+4 DMG & Volley) - <span id="cost-bow">30</span> 🪙</button>
         </div>
         <div class="upgrade-card">
           <h3>Rune Armor (DEF)</h3>

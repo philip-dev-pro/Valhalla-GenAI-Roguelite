@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Aethelgard: Valhalla Trials - Ghost-Damage Bugfix & Balanced Low Audio
+   Aethelgard: Valhalla Trials - Tactical Dash, Volleys, Buffs & Boss Colors
    ========================================================================== */
 
 function loadSavedProfile() {
@@ -27,6 +27,10 @@ function loadSavedProfile() {
 
     threatLevel: parseInt(localStorage.getItem('valhalla_threat_level') || '1'),
     spawnImmunityTimer: 0.0,
+
+    // Buff states
+    divineShieldHits: 0,
+    berserkTimer: 0.0,
 
     modifierEnemySpeed: 1.0,
     modifierEnemyDmg: 1.0,
@@ -74,7 +78,7 @@ function getCostBow() { return 30 + (state.tierBow * 15); }
 function getCostDef() { return 40 + (state.tierDef * 20); }
 
 // ==========================================
-// AUDIO ENGINE (Lowered to 0.16 volume)
+// AUDIO ENGINE (0.25 Volume)
 // ==========================================
 let audioCtx = null;
 function initAudio() {
@@ -106,7 +110,7 @@ function playAdaptiveMusic(category) {
   if (currentTrackPlaying !== nextSrc && nextSrc) {
     currentTrackPlaying = nextSrc;
     audioEl.src = nextSrc;
-    audioEl.volume = 0.16; // Diskreta 0.16
+    audioEl.volume = 0.25;
     audioEl.play().catch(e => console.log("Autoplay blocked", e));
   }
 }
@@ -152,6 +156,14 @@ function playSound(type) {
       gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
       osc.start(now);
       osc.stop(now + 0.08);
+    } else if (type === 'dash') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(280, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.14);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.14);
+      osc.start(now);
+      osc.stop(now + 0.14);
     } else if (type === 'player_hurt') {
       osc.type = 'square';
       osc.frequency.setValueAtTime(110, now);
@@ -199,7 +211,7 @@ let leftLegMesh, rightLegMesh;
 let enemies = [];
 let playerProjectiles = [];
 let enemyProjectiles = [];
-let healthPickups = [];
+let pickups = [];
 let shockwaves = [];
 let lightningTelegraphs = [];
 let vortexPullActive = false;
@@ -208,7 +220,6 @@ let groundMesh;
 let arenaStructures = [];
 let directionalLight, ambientLight;
 
-// Active timeouts pool (Eliminerar spökskador vid död/zonbyte)
 let activeBossTimeouts = [];
 
 let particlesMesh;
@@ -225,13 +236,19 @@ const cameraDistance = 8.5;
 const cameraHeight = 3.0;
 let introOrbitAngle = 0;
 
-// Movement & Air Hang-time
+// Movement & Tactical Dash with I-Frames
 const keys = { w: false, a: false, s: false, d: false, shift: false };
 let playerVelocityY = 0;
 let isGrounded = true;
 const GRAVITY = -0.012;
 const JUMP_FORCE = 0.42;
 let walkCycleTimer = 0;
+
+// Dash state
+let isDashing = false;
+let dashTimer = 0.0;
+let dashCooldown = 0.0;
+let dashDirection = new THREE.Vector3();
 
 // Combat
 let isAttacking = false;
@@ -436,48 +453,101 @@ function createDualWieldPlayer() {
   scene.add(playerGroup);
 }
 
-// --- HEALTH DROPS ---
-function spawnHealthPickup(pos) {
+// --- RANDOM POWER-UP PICKUPS (Health, Divine Shield, Berserk) ---
+function spawnRandomPickup(pos) {
+  const roll = Math.random();
+  let type = 'heal';
+  let color = 0x00e676;
+
+  if (roll < 0.45) {
+    type = 'heal';
+    color = 0x00e676; // Green Health
+  } else if (roll < 0.75) {
+    type = 'shield';
+    color = 0x00e5ff; // Cyan Divine Shield
+  } else {
+    type = 'berserk';
+    color = 0xe040fb; // Purple 2x Fury
+  }
+
   const group = new THREE.Group();
   const geo = new THREE.OctahedronGeometry(0.38);
-  const mat = new THREE.MeshStandardMaterial({ color: 0x00e676, emissive: 0x00b0ff, metalness: 0.85, roughness: 0.2 });
+  const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, metalness: 0.85, roughness: 0.2 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = 0.5;
   group.add(mesh);
 
   group.position.set(pos.x, 0, pos.z);
   scene.add(group);
-  healthPickups.push({ group: group, mesh: mesh, life: 25.0 });
+  pickups.push({ group: group, mesh: mesh, type: type, life: 25.0 });
 }
 
-function updateHealthPickups(delta) {
-  for (let i = healthPickups.length - 1; i >= 0; i--) {
-    const pickup = healthPickups[i];
+function updatePickups(delta) {
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const pickup = pickups[i];
     pickup.mesh.rotation.y += 0.03;
     pickup.mesh.position.y = 0.5 + Math.sin(clock.getElapsedTime() * 4) * 0.12;
     pickup.life -= delta;
 
     if (playerGroup.position.distanceTo(pickup.group.position) < 1.6) {
-      state.hp = Math.min(state.maxHp, state.hp + 25);
-      playSound('heal');
+      if (pickup.type === 'heal') {
+        state.hp = Math.min(state.maxHp, state.hp + 25);
+        playSound('heal');
+      } else if (pickup.type === 'shield') {
+        state.divineShieldHits = 3;
+        playSound('parry');
+      } else if (pickup.type === 'berserk') {
+        state.berserkTimer = 8.0;
+        playSound('dash');
+      }
+
       updateHUD();
       scene.remove(pickup.group);
-      healthPickups.splice(i, 1);
+      pickups.splice(i, 1);
       continue;
     }
 
     if (pickup.life <= 0) {
       scene.remove(pickup.group);
-      healthPickups.splice(i, 1);
+      pickups.splice(i, 1);
     }
   }
 }
 
-// --- COMBAT ACTIONS ---
+// --- TACTICAL DASH MECHANIC (I-Frames on Shift) ---
+function triggerDash() {
+  if (dashCooldown > 0 || isDashing || isDead || !state.isGameStarted) return;
+  isDashing = true;
+  dashTimer = 0.25; // 0.25 seconds of invincibility & high burst speed!
+  dashCooldown = 0.8; // Short cooldown
+  playSound('dash');
+
+  // Dash in movement direction or camera forward
+  const forwardX = Math.sin(cameraYaw);
+  const forwardZ = Math.cos(cameraYaw);
+  const rightX = Math.sin(cameraYaw + Math.PI / 2);
+  const rightZ = Math.cos(cameraYaw + Math.PI / 2);
+
+  dashDirection.set(0, 0, 0);
+  if (keys.w) dashDirection.add(new THREE.Vector3(forwardX, 0, forwardZ));
+  if (keys.s) dashDirection.add(new THREE.Vector3(-forwardX, 0, -forwardZ));
+  if (keys.d) dashDirection.add(new THREE.Vector3(-rightX, 0, -rightZ));
+  if (keys.a) dashDirection.add(new THREE.Vector3(rightX, 0, rightZ));
+
+  if (dashDirection.length() === 0) {
+    dashDirection.set(forwardX, 0, forwardZ);
+  }
+  dashDirection.normalize();
+}
+
+// --- BALANCED CROSSBOW (Split-Damage Volley) ---
 function shootCrossbow() {
   if (isDead || !state.isGameStarted || state.inIntroSequence) return;
   const now = clock.getElapsedTime();
-  if (now - lastRangedShotTime < 0.35) return;
+  
+  // Något längre cooldown om man har multi-shot så den inte kan spamas
+  const cooldown = state.tierBow >= 3 ? 0.45 : 0.35;
+  if (now - lastRangedShotTime < cooldown) return;
   lastRangedShotTime = now;
 
   playSound('crossbow');
@@ -485,16 +555,29 @@ function shootCrossbow() {
   setTimeout(() => { if (leftArmGroup) leftArmGroup.position.z += 0.12; }, 70);
 
   const spawnPos = new THREE.Vector3(playerGroup.position.x, 1.4, playerGroup.position.z);
-  const dir = new THREE.Vector3(Math.sin(cameraYaw), 0, Math.cos(cameraYaw)).normalize();
+  const forward = new THREE.Vector3(Math.sin(cameraYaw), 0, Math.cos(cameraYaw)).normalize();
 
-  const arrowGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.1, 8);
-  const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
-  const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-  arrow.position.copy(spawnPos);
-  arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  const shootArrow = (dir, dmgMultiplier = 1.0) => {
+    const arrowGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.1, 8);
+    const arrowMat = new THREE.MeshBasicMaterial({ color: dmgMultiplier === 1.0 ? 0xffeb3b : 0xffb300 });
+    const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+    arrow.position.copy(spawnPos);
+    arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    arrow.userData = { dmgMult: dmgMultiplier }; // Lagrar individuell pils skada!
+    scene.add(arrow);
+    playerProjectiles.push({ mesh: arrow, dir: dir, life: 1.6, speed: 0.85 });
+  };
 
-  scene.add(arrow);
-  playerProjectiles.push({ mesh: arrow, dir: dir, life: 1.6, speed: 0.85 });
+  // 1. Mittenpilen gör normal skada (100%)
+  shootArrow(forward, 1.0);
+
+  // 2. Sidopilar aktiveras först vid Tier 3, och gör bara 40% skada var!
+  if (state.tierBow >= 3) {
+    const leftDir = forward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.18);
+    const rightDir = forward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -0.18);
+    shootArrow(leftDir, 0.40); // 40% skada
+    shootArrow(rightDir, 0.40); // 40% skada
+  }
 }
 
 function updatePlayerProjectiles(delta) {
@@ -505,6 +588,7 @@ function updatePlayerProjectiles(delta) {
 
     let hit = false;
 
+    // 1. Parrying (Alla pilar kan fortfarande skjuta ner fiendeskott!)
     for (let k = enemyProjectiles.length - 1; k >= 0; k--) {
       const ep = enemyProjectiles[k];
       if (p.mesh.position.distanceTo(ep.mesh.position) < 0.9) {
@@ -519,6 +603,7 @@ function updatePlayerProjectiles(delta) {
     }
     if (hit) continue;
 
+    // 2. Träff på fiende
     for (let j = enemies.length - 1; j >= 0; j--) {
       const enemy = enemies[j];
       const dx = p.mesh.position.x - enemy.position.x;
@@ -528,20 +613,26 @@ function updatePlayerProjectiles(delta) {
 
       if (horizontalDist <= enemy.userData.radius + 0.8 && verticalDist <= 2.2) {
         playSound('hit');
-        const damageToApply = enemy.userData.isBoss ? state.rangedDmg * 0.65 : state.rangedDmg;
+        const mult = state.berserkTimer > 0 ? 2.0 : 1.0;
+        const arrowMult = p.mesh.userData.dmgMult || 1.0; // 1.0 eller 0.4
+
+        // Balanserad skada per pil!
+        const baseDmg = enemy.userData.isBoss ? state.rangedDmg * 0.65 : state.rangedDmg;
+        const damageToApply = baseDmg * arrowMult * mult;
+
         enemy.userData.hp -= damageToApply;
         updateEnemyHpSprite(enemy.userData.hpSprite, enemy.userData.hp, enemy.userData.maxHp);
 
         enemy.userData.bodyMesh.material.emissive.setHex(0xffff55);
         setTimeout(() => {
           if (enemy.userData && enemy.userData.bodyMesh) {
-            enemy.userData.bodyMesh.material.emissive.setHex(enemy.userData.isBoss ? 0x7f0000 : enemy.userData.baseEmissive);
+            enemy.userData.bodyMesh.material.emissive.setHex(enemy.userData.baseEmissive);
           }
         }, 80);
 
         if (enemy.userData.hp <= 0) {
           state.essence += enemy.userData.isBoss ? 250 : 35;
-          if (Math.random() < 0.28) spawnHealthPickup(enemy.position);
+          if (Math.random() < 0.32) spawnRandomPickup(enemy.position);
           autoSaveProfile();
           scene.remove(enemy);
           enemies.splice(j, 1);
@@ -575,6 +666,28 @@ function shootEnemyProjectile(fromPos, targetPos, colorHex = 0xff1744, speed = 0
   enemyProjectiles.push({ mesh: proj, dir: dir, speed: speed, life: isHoming ? 4.5 : 3.5 });
 }
 
+function applyPlayerDamage(rawDamage) {
+  // Invulnerable during Dash I-Frames!
+  if (isDashing || state.spawnImmunityTimer > 0 || state.currentZone === 'The Sanctuary (Hub)') return;
+
+  // Divine Shield Absorption
+  if (state.divineShieldHits > 0) {
+    state.divineShieldHits--;
+    playSound('parry');
+    updateHUD();
+    return;
+  }
+
+  triggerDamageFlash();
+  playSound('player_hurt');
+  const dmg = rawDamage * (1.0 - state.defense);
+  state.hp -= dmg;
+  updateHUD();
+
+  playerGroup.position.y += 0.1;
+  if (state.hp <= 0 && !isDead) handleDeath();
+}
+
 function updateEnemyProjectiles(delta) {
   for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
     const p = enemyProjectiles[i];
@@ -589,25 +702,15 @@ function updateEnemyProjectiles(delta) {
     p.mesh.position.addScaledVector(p.dir, p.speed);
     p.life -= delta;
 
-    if (state.spawnImmunityTimer <= 0 && state.currentZone !== 'The Sanctuary (Hub)') {
-      const playerChestPos = new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 1.4, playerGroup.position.z);
-      const distToPlayer = p.mesh.position.distanceTo(playerChestPos);
+    const playerChestPos = new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 1.4, playerGroup.position.z);
+    const distToPlayer = p.mesh.position.distanceTo(playerChestPos);
 
-      if (distToPlayer < 1.3) {
-        triggerDamageFlash();
-        playSound('player_hurt');
-        const baseDmg = p.mesh.userData.dmg || 20;
-        const dmg = baseDmg * (1.0 - state.defense);
-        state.hp -= dmg;
-        updateHUD();
-
-        playerGroup.position.y += 0.1;
-        scene.remove(p.mesh);
-        enemyProjectiles.splice(i, 1);
-
-        if (state.hp <= 0 && !isDead) handleDeath();
-        continue;
-      }
+    if (distToPlayer < 1.3) {
+      const baseDmg = p.mesh.userData.dmg || 20;
+      applyPlayerDamage(baseDmg);
+      scene.remove(p.mesh);
+      enemyProjectiles.splice(i, 1);
+      continue;
     }
 
     if (p.life <= 0) {
@@ -623,9 +726,9 @@ function triggerDamageFlash() {
   setTimeout(() => flash.classList.add('hidden'), 120);
 }
 
-// FAIR SHOCKWAVE (Must be jumped over with space!)
+// FAIR SHOCKWAVE (Jumpable)
 function triggerBossShockwave(pos, waveDamage = 50) {
-  if (state.currentZone === 'The Sanctuary (Hub)') return; // Skydd mot spökskada
+  if (state.currentZone === 'The Sanctuary (Hub)') return;
 
   const ringGeo = new THREE.RingGeometry(0.8, 1.4, 32);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xff1744, side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
@@ -647,22 +750,13 @@ function updateShockwaves(delta) {
 
     const distToCenter = Math.hypot(playerGroup.position.x - sw.mesh.position.x, playerGroup.position.z - sw.mesh.position.z);
     
-    // SAFE IF IN AIR OR IF IN HUB
-    if (Math.abs(distToCenter - sw.radius) < 1.3 && state.spawnImmunityTimer <= 0 && state.currentZone !== 'The Sanctuary (Hub)') {
+    if (Math.abs(distToCenter - sw.radius) < 1.3) {
       if (playerGroup.position.y < 0.18) {
-        triggerDamageFlash();
-        playSound('player_hurt');
-        const rawDmg = sw.mesh.userData.dmg || 50;
-        const dmg = rawDmg * (1.0 - state.defense);
-        state.hp -= dmg;
-        updateHUD();
-
+        applyPlayerDamage(sw.mesh.userData.dmg || 50);
         playerVelocityY = 0.2;
         const knockDir = new THREE.Vector3().subVectors(playerGroup.position, sw.mesh.position).normalize();
         playerGroup.position.addScaledVector(knockDir, 2.5);
-
         sw.radius = sw.maxRadius;
-        if (state.hp <= 0 && !isDead) handleDeath();
       }
     }
 
@@ -673,7 +767,7 @@ function updateShockwaves(delta) {
   }
 }
 
-// BOSS ATTACK 2: TRIPLE LIGHTNING STRIKES
+// TRIPLE LIGHTNING STRIKES
 function triggerTripleLightning(targetPos, strikeDamage = 45) {
   for (let i = 0; i < 3; i++) {
     const offsetAngle = (i / 3) * Math.PI * 2;
@@ -683,7 +777,7 @@ function triggerTripleLightning(targetPos, strikeDamage = 45) {
     };
 
     const circleGeo = new THREE.CircleGeometry(2.2, 32);
-    const circleMat = new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+    const circleMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
     const circle = new THREE.Mesh(circleGeo, circleMat);
     circle.rotation.x = -Math.PI / 2;
     circle.position.set(strikePos.x, 0.04, strikePos.z);
@@ -710,14 +804,8 @@ function updateLightning(delta) {
       setTimeout(() => scene.remove(bolt), 150);
 
       const dist = Math.hypot(playerGroup.position.x - lt.x, playerGroup.position.z - lt.z);
-      if (dist <= 2.2 && state.spawnImmunityTimer <= 0 && state.currentZone !== 'The Sanctuary (Hub)') {
-        triggerDamageFlash();
-        playSound('player_hurt');
-        const rawDmg = lt.mesh.userData.dmg || 45;
-        const dmg = rawDmg * (1.0 - state.defense);
-        state.hp -= dmg;
-        updateHUD();
-        if (state.hp <= 0 && !isDead) handleDeath();
+      if (dist <= 2.2) {
+        applyPlayerDamage(lt.mesh.userData.dmg || 45);
       }
 
       scene.remove(lt.mesh);
@@ -726,7 +814,6 @@ function updateLightning(delta) {
   }
 }
 
-// BOSS ATTACK 4: VOID VORTEX PULL
 function handleVoidVortexPull(bossPos, delta) {
   if (!vortexPullActive || state.spawnImmunityTimer > 0 || state.currentZone === 'The Sanctuary (Hub)') return;
   const toBoss = new THREE.Vector3().subVectors(bossPos, playerGroup.position);
@@ -767,7 +854,7 @@ function updateEnemyHpSprite(sprite, currentHp, maxHp) {
   texture.needsUpdate = true;
 }
 
-// --- ENEMY SPAWNING ---
+// --- ENEMY SPAWNING WITH BOSS COLOR THEMES & FASTER MOBS ---
 function spawnEnemiesForLevel(level) {
   clearEnemies();
   clearProjectiles();
@@ -806,9 +893,24 @@ function spawnEnemiesForLevel(level) {
     let bodyGeo;
     let bodyMat;
 
+    // Distinct visual themes for each boss class
     if (isBoss) {
       bodyGeo = new THREE.BoxGeometry(0.9 * scale, 1.4 * scale, 0.85 * scale);
-      bodyMat = new THREE.MeshStandardMaterial({ color: 0xb71c1c, emissive: 0x7f0000, roughness: 0.4 });
+      let bossColor = 0xb71c1c;
+      let bossEmissive = 0x7f0000;
+
+      if (realmLore.bossClass === 'lightning') {
+        bossColor = 0x00b0ff;
+        bossEmissive = 0x00e5ff;
+      } else if (realmLore.bossClass === 'archer') {
+        bossColor = 0x2e7d32;
+        bossEmissive = 0x69f0ae;
+      } else if (realmLore.bossClass === 'vortex') {
+        bossColor = 0x6a1b9a;
+        bossEmissive = 0xffd54f;
+      }
+
+      bodyMat = new THREE.MeshStandardMaterial({ color: bossColor, emissive: bossEmissive, roughness: 0.35 });
     } else if (enemyRole === 'brawler') {
       bodyGeo = new THREE.BoxGeometry(1.1, 1.3, 0.9);
       bodyMat = new THREE.MeshStandardMaterial({ color: realmLore.archetype.colorHex, emissive: realmLore.archetype.emissiveHex, roughness: 0.5 });
@@ -852,13 +954,16 @@ function spawnEnemiesForLevel(level) {
     const baseHp = isBoss ? (750 * threatScaleHp) : ((40 + (level * 16)) * threatScaleHp);
     const baseDmg = (16 + (level * 2.5)) * threatScaleDmg * state.modifierEnemyDmg;
 
+    // Melee enemies are faster (+30% speed) as requested by Raul!
+    const mobSpeed = (isBoss ? 0.035 : (enemyRole === 'charger' ? 0.052 : (enemyRole === 'brawler' ? 0.046 : 0.028))) * state.modifierEnemySpeed;
+
     group.userData = {
       isBoss: isBoss,
       role: enemyRole,
       bossClass: realmLore.bossClass || 'slammer',
       hp: baseHp,
       maxHp: baseHp,
-      speed: (isBoss ? 0.034 : (enemyRole === 'charger' ? 0.048 : (enemyRole === 'sniper' ? 0.026 : 0.036))) * state.modifierEnemySpeed,
+      speed: mobSpeed,
       damage: Math.round(baseDmg),
       attackCooldown: 1.5,
       specialAttackTimer: 3.5,
@@ -890,8 +995,8 @@ function clearProjectiles() {
   shockwaves = [];
   lightningTelegraphs.forEach(l => scene.remove(l.mesh));
   lightningTelegraphs = [];
-  healthPickups.forEach(h => scene.remove(h.group));
-  healthPickups = [];
+  pickups.forEach(h => scene.remove(h.group));
+  pickups = [];
 }
 
 // PURE NATURAL STONE ARENA FLOOR
@@ -997,7 +1102,7 @@ function spawnArenaPerimeterAndPillars(wallRadius = 32, pillarColor = 0x1f1b33) 
 }
 
 function buildSanctuary() {
-  clearAllBossTimeouts(); // Rensar alla timers så ingen spökskada kan ske!
+  clearAllBossTimeouts();
   clearProjectiles();
 
   playAdaptiveMusic('hub');
@@ -1006,6 +1111,8 @@ function buildSanctuary() {
   state.hp = state.maxHp;
   state.isArenaCleared = false;
   state.spawnImmunityTimer = 0;
+  state.divineShieldHits = 0;
+  state.berserkTimer = 0;
   vortexPullActive = false;
   isDead = false;
 
@@ -1177,7 +1284,6 @@ async function triggerGenAIRun() {
     }
   }
 
-  // 4 Balanced Distinct Realms (25% Probability Each) & 4 Bosses
   setTimeout(() => {
     const proceduralRealms = [
       {
@@ -1278,6 +1384,13 @@ function animate() {
   checkHeartbeat(now);
   updateParticles(delta);
 
+  // Timers
+  if (dashCooldown > 0) dashCooldown -= delta;
+  if (state.berserkTimer > 0) {
+    state.berserkTimer -= delta;
+    if (state.berserkTimer <= 0) updateHUD();
+  }
+
   if (state.inIntroSequence) {
     introOrbitAngle += delta * 0.35;
     camera.position.x = Math.sin(introOrbitAngle) * 16;
@@ -1300,7 +1413,7 @@ function animate() {
     updatePlayerMovement(delta);
     updatePlayerProjectiles(delta);
     updateEnemyProjectiles(delta);
-    updateHealthPickups(delta);
+    updatePickups(delta);
     updateShockwaves(delta);
     updateLightning(delta);
     updateEnemies(delta);
@@ -1349,7 +1462,7 @@ function updateCameraAndPlayerAim() {
   camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.6, playerGroup.position.z);
 }
 
-// --- MOVEMENT & COLLISION ---
+// --- PHYSICS & TACTICAL DASH ---
 function updatePlayerPhysics() {
   if (!playerGroup) return;
 
@@ -1368,7 +1481,16 @@ function updatePlayerPhysics() {
 function updatePlayerMovement(delta) {
   if (!playerGroup) return;
 
-  state.speed = keys.shift ? state.baseSpeed * 1.45 : state.baseSpeed;
+  // Handle Dash burst movement
+  if (isDashing) {
+    dashTimer -= delta;
+    playerGroup.position.addScaledVector(dashDirection, 0.28); // Fast dash leap!
+
+    if (dashTimer <= 0) {
+      isDashing = false;
+    }
+    return;
+  }
 
   const forwardX = Math.sin(cameraYaw);
   const forwardZ = Math.cos(cameraYaw);
@@ -1385,7 +1507,7 @@ function updatePlayerMovement(delta) {
 
   const len = Math.hypot(moveX, moveZ);
   if (len > 0) {
-    walkCycleTimer += delta * (keys.shift ? 15 : 10);
+    walkCycleTimer += delta * 12;
     leftLegMesh.rotation.x = Math.sin(walkCycleTimer) * 0.5;
     rightLegMesh.rotation.x = -Math.sin(walkCycleTimer) * 0.5;
 
@@ -1434,19 +1556,20 @@ function triggerMeleeAttack() {
 
       if (angle <= attackArc / 2) {
         playSound('hit');
-        enemy.userData.hp -= state.attackDmg;
+        const mult = state.berserkTimer > 0 ? 2.0 : 1.0;
+        enemy.userData.hp -= state.attackDmg * mult;
         updateEnemyHpSprite(enemy.userData.hpSprite, enemy.userData.hp, enemy.userData.maxHp);
 
         enemy.userData.bodyMesh.material.emissive.setHex(0xffffff);
         setTimeout(() => {
           if (enemy.userData && enemy.userData.bodyMesh) {
-            enemy.userData.bodyMesh.material.emissive.setHex(enemy.userData.isBoss ? 0x7f0000 : enemy.userData.baseEmissive);
+            enemy.userData.bodyMesh.material.emissive.setHex(enemy.userData.baseEmissive);
           }
         }, 100);
 
         if (enemy.userData.hp <= 0) {
           state.essence += enemy.userData.isBoss ? 250 : 35;
-          if (Math.random() < 0.28) spawnHealthPickup(enemy.position);
+          if (Math.random() < 0.32) spawnRandomPickup(enemy.position);
           autoSaveProfile();
           scene.remove(enemy);
           enemies.splice(i, 1);
@@ -1474,7 +1597,6 @@ function updateEnemies(delta) {
     if (enemy.userData.isBoss) {
       enemy.userData.specialAttackTimer -= delta;
 
-      // 1. SLAMMER BOSS
       if (enemy.userData.bossClass === 'slammer') {
         if (enemy.userData.specialAttackTimer <= 0 && enemy.userData.jumpState === 'ground') {
           enemy.userData.jumpState = 'jumping';
@@ -1493,14 +1615,12 @@ function updateEnemies(delta) {
           }
         }
       }
-      // 2. LIGHTNING BOSS
       else if (enemy.userData.bossClass === 'lightning') {
         if (enemy.userData.specialAttackTimer <= 0) {
           enemy.userData.specialAttackTimer = 4.0;
           triggerTripleLightning(playerGroup.position, Math.round(45 * threatScaleDmg));
         }
       }
-      // 3. ARCHER BOSS
       else if (enemy.userData.bossClass === 'archer') {
         if (enemy.userData.specialAttackTimer <= 0 && state.spawnImmunityTimer <= 0) {
           enemy.userData.specialAttackTimer = 3.2;
@@ -1514,7 +1634,6 @@ function updateEnemies(delta) {
           shootEnemyProjectile(enemy.position, enemy.position.clone().add(rightSpread.multiplyScalar(10)), 0x69f0ae, 0.36, projDmg);
         }
       }
-      // 4. BALANCED VORTEX BOSS (With clear 1.2s wind-up)
       else if (enemy.userData.bossClass === 'vortex') {
         if (enemy.userData.specialAttackTimer <= 0 && !vortexPullActive) {
           enemy.userData.specialAttackTimer = 6.0;
@@ -1610,14 +1729,8 @@ function updateEnemies(delta) {
       enemy.lookAt(playerGroup.position.x, enemy.position.y, playerGroup.position.z);
 
       if (distToPlayer <= 1.6 && enemy.userData.attackCooldown <= 0 && state.spawnImmunityTimer <= 0) {
-        triggerDamageFlash();
-        playSound('player_hurt');
-        const effectiveDamage = enemy.userData.damage * (1.0 - state.defense);
-        state.hp -= effectiveDamage;
+        applyPlayerDamage(enemy.userData.damage);
         enemy.userData.attackCooldown = 1.2;
-        updateHUD();
-        playerGroup.position.y += 0.1;
-        if (state.hp <= 0 && !isDead) { handleDeath(); return; }
       }
       continue;
     }
@@ -1632,19 +1745,8 @@ function updateEnemies(delta) {
       enemy.lookAt(playerGroup.position.x, enemy.position.y, playerGroup.position.z);
     } else {
       if (enemy.userData.attackCooldown <= 0 && state.spawnImmunityTimer <= 0) {
-        triggerDamageFlash();
-        playSound('player_hurt');
-        const effectiveDamage = enemy.userData.damage * (1.0 - state.defense);
-        state.hp -= effectiveDamage;
+        applyPlayerDamage(enemy.userData.damage);
         enemy.userData.attackCooldown = 1.2;
-        updateHUD();
-
-        playerGroup.position.y += 0.1;
-
-        if (state.hp <= 0 && !isDead) {
-          handleDeath();
-          return;
-        }
       }
     }
   }
@@ -1694,9 +1796,9 @@ function advanceToNextZone() {
       if (state.activeRunLore.bossClass === 'slammer') {
         warn.innerText = "⚠️ JUMP [SPACE] high over the shockwave rings!";
       } else if (state.activeRunLore.bossClass === 'lightning') {
-        warn.innerText = "⚠️ DODGE out of the triple red circles before lightning strikes!";
+        warn.innerText = "⚠️ DODGE out of the triple circles before lightning strikes!";
       } else if (state.activeRunLore.bossClass === 'vortex') {
-        warn.innerText = "⚠️ RESIST the Gravity Vortex, then JUMP or SPRINT away before the shockwave!";
+        warn.innerText = "⚠️ RESIST the Gravity Vortex, then JUMP or DASH away before the shockwave!";
       } else {
         warn.innerText = "⚠️ DUCK/STRAFE between the boss's 3-way crossbow volleys!";
       }
@@ -1707,7 +1809,7 @@ function advanceToNextZone() {
 function handleDeath() {
   isDead = true;
   state.hp = 0;
-  clearAllBossTimeouts(); // Stoppar alla pågående attacker direkt
+  clearAllBossTimeouts();
   updateHUD();
 
   const deathOverlay = document.getElementById('death-screen');
@@ -1779,6 +1881,23 @@ function updateHUD() {
   document.getElementById('zone-text').innerText = state.currentZone;
   document.getElementById('threat-level-hud').innerText = `Level ${state.threatLevel}`;
 
+  // Buff HUD displays
+  const shieldBadge = document.getElementById('buff-shield');
+  const berserkBadge = document.getElementById('buff-berserk');
+
+  if (state.divineShieldHits > 0) {
+    shieldBadge.classList.remove('hidden');
+    document.getElementById('shield-count').innerText = state.divineShieldHits;
+  } else {
+    shieldBadge.classList.add('hidden');
+  }
+
+  if (state.berserkTimer > 0) {
+    berserkBadge.classList.remove('hidden');
+  } else {
+    berserkBadge.classList.add('hidden');
+  }
+
   const vignette = document.getElementById('low-hp-vignette');
   if (state.hp < state.maxHp * 0.35 && state.hp > 0) {
     vignette.classList.remove('hidden');
@@ -1789,6 +1908,7 @@ function updateHUD() {
   document.getElementById('stat-maxhp').innerText = state.maxHp;
   document.getElementById('stat-dmg').innerText = state.attackDmg;
   document.getElementById('stat-bow').innerText = state.rangedDmg;
+  document.getElementById('stat-volley').innerText = state.tierBow >= 3 ? '3' : '1';
   document.getElementById('stat-def').innerText = `${Math.round(state.defense * 100)}%`;
 
   document.getElementById('cost-hp').innerText = getCostHp();
@@ -1919,9 +2039,12 @@ function setupEvents() {
     if (e.code === 'KeyS') keys.s = true;
     if (e.code === 'KeyA') keys.a = true;
     if (e.code === 'KeyD') keys.d = true;
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
 
-    // High jump leap with floaty hang-time
+    // Shift or Q triggers Tactical Dash with I-Frames!
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyQ') {
+      triggerDash();
+    }
+
     if (e.code === 'Space') {
       if (isGrounded && !isDead) {
         playerVelocityY = JUMP_FORCE;
@@ -1937,7 +2060,6 @@ function setupEvents() {
     if (e.code === 'KeyS') keys.s = false;
     if (e.code === 'KeyA') keys.a = false;
     if (e.code === 'KeyD') keys.d = false;
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
   });
 
   window.addEventListener('resize', () => {
