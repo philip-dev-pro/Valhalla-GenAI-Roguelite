@@ -91,5 +91,5 @@ The game is deployed using a fully automated pipeline:
 2. Run `terraform init` and `terraform apply -auto-approve`.
 3. The AWS EC2 instance will automatically install **Nginx** and **Ansible** to pull the latest code and go live.
 
-**Developers:** Raul Velasquez & Philip  
+**Developers:** Raul Velasquez & Philip Sjöholm
 **Deployment Date:** September 2026
