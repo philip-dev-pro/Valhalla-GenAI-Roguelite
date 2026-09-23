@@ -108,17 +108,3 @@ engaging 3D experience.
 
 Developers: Raul Velasquez & Philip
 Deployment Date: September 2026
-
-📽 Video Recording Script (Tip for you)
-
-To reach the 4-minute requirement on English, follow this structure:
-
-1.  0:00-0:45: Intro (Your names, project goal: GenAI + DevOps).
-2.  0:45-1:30: Show the GitHub README and explain Phase 1 & 2.
-3.  1:30-2:30: Briefly show the Terraform/Ansible code and how you solved the S3
-    naming problem.
-4.  2:30-3:45: Live Demo. Enter Valhalla, use the Dash, show the Crossbow
-    Volley, and fight a Boss.
-5.  3:45-4:00+: Conclusion (What you learned).
-
-Good luck with the recording, Raul! You are almost at the finish line! 🚀⚔️
