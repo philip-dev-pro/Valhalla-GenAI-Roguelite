@@ -1,6 +1,8 @@
 # Aethelgard: Valhalla Trials
 ### 3D Generative AI Roguelite | Version 2.0 (Tactical Update)
 
+🎮 **[LIVE DEMO HERE](http://ec2-13-61-14-240.eu-north-1.compute.amazonaws.com/)**
+
 ![Engine](https://img.shields.io/badge/Engine-Three.js-blueviolet) 
 ![AI](https://img.shields.io/badge/AI-Google_Gemini-blue) 
 ![DevOps](https://img.shields.io/badge/Infrastructure-AWS_Level_3-orange)
