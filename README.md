@@ -1,68 +1,124 @@
-# Aethelgard: Valhalla Trials
-### 3D Generative AI Roguelite | AWS Level 3 Architecture
+Aethelgard: Valhalla Trials
 
-![Game Preview](https://img.shields.io/badge/Engine-Three.js-blueviolet)
-![GenAI](https://img.shields.io/badge/AI-Google_Gemini-blue)
-![Infrastructure](https://img.shields.io/badge/Infrastructure-AWS_Level_3-orange)
+3D Generative AI Roguelite | Version 2.0 (Tactical Update)
 
-## ⚔️ Project Overview
-**Aethelgard: Valhalla Trials** is a fast-paced 3D roguelite action game that combines high-fidelity browser graphics with real-time Generative AI. Players step into the armor of an Einherjar, battling through procedural realms woven by the **AI Fate Weaver** to prove their worth in Valhalla.
+Engine AI DevOps
 
-The project demonstrates a modern "Serverless Game Client" approach, designed to be deployed using the **AWS Level 3 Iteration** flow (Terraform + Ansible automation).
+⚔️ Project Overview
 
-## 🚀 Key Features
+Aethelgard: Valhalla Trials is a technical demonstration of a 3D action
+roguelite built with Three.js and integrated with the Google Gemini AI engine.
+This project showcases the intersection of Infrastructure as Code
+(AWS/Terraform) and Modern Web Development.
 
-### 1. Generative AI Fate Weaver
-Using the **Google Gemini 1.5 Flash API**, the game procedurally generates:
-*   **Realm Lore:** Unique titles and dramatic atmospheric descriptions for every run.
-*   **Dynamic Visuals:** AI-driven color palettes and environmental lighting.
-*   **Boss Personalities:** Unique boss names, classes (Slammer, Lightning, Archer), and procedurally generated taunts.
+📑 Phase 1: Research Phase (Pre-Study)
 
-### 2. Twin-Weapon Combat System
-*   **Rune Sword:** High-damage melee slashes with ray-cast hit detection.
-*   **Rune Crossbow:** Precision projectile physics for long-range engagements.
-*   **Limb-Rigged Animation:** Custom Three.js walking limb bobbing and weapon swing animations.
+Information Gathering
 
-### 3. Progressive Roguelite Mechanics
-*   **Permanent Meta-Progression:** Collect **Essence** from fallen foes to upgrade Vitality, Blade Mastery, and Rune Armor at the Sanctuary Altar.
-*   **Dynamic Threat Levels:** Each successful run increases the global Threat Level, scaling enemy HP and damage for infinite replayability.
-*   **Status System:** Includes low-HP heartbeat drones, damage flashes, and pulse vignettes.
+We researched the Three.js documentation for 3D rendering and the Web Audio API
+for procedural sound generation. For the AI component, we explored Google
+Gemini 1.5 Flash for its low-latency response times, ideal for generating live
+game lore.
 
-### 4. Advanced Sound Engine
-*   **Synthesized Web Audio:** Procedural sound effects generated via oscillators (No external assets required for SFX).
-*   **Adaptive Music:** Integrated Suno AI music playlist that switches between Hub, Arena, and Boss tracks based on player location.
+Tools & Technologies
 
-## 🛠 Technical Stack
-*   **Graphics:** [Three.js](https://threejs.org/) (WebGL)
-*   **Logic:** Vanilla JavaScript (ES6+)
-*   **AI Engine:** Google Gemini API
-*   **Audio:** Web Audio API (OscillatorNode / GainNode)
-*   **Styling:** CSS3 (Animations & Radial Blurs)
-*   **DevOps:** AWS (EC2, S3), Terraform, Ansible (Level 3 Infrastructure)
+  - Frontend: Three.js (WebGL), Vanilla JavaScript (ES6+), CSS3 Animations.
+  - AI Integration: Google Gemini API.
+  - Audio: Web Audio Oscillator Engine.
+  - Infrastructure: AWS (EC2, S3), Terraform, Ansible.
 
-## 🎮 Controls
-| Key | Action |
-|-----|--------|
-| **W A S D** | Movement & Strafe |
-| **SHIFT** | Sprint (45% speed boost) |
-| **SPACE** | Jump (Dodge shockwaves) |
-| **MOUSE** | 3rd Person Camera / Aiming |
-| **LEFT CLICK** | Melee Sword Attack |
-| **RIGHT CLICK** | Ranged Crossbow Shot |
-| **E** | Interact (Portal / Altar) |
+Research Problems & Solutions
 
-## 📦 Infrastructure & Deployment
-This game is designed to be deployed on **AWS EC2** using the **Level 3 DevOps Pipeline**:
-1.  **Terraform:** Provisions the EC2 instance, Security Groups (Port 80/22), and S3 Remote State.
-2.  **Ansible:** Configures the Nginx web server and clones this repository.
-3.  **User Data:** Automatically bootstraps the environment for an instant "Push-to-Live" experience.
+  - Problem: High latency when calling the AI during gameplay.
+  - Solution: Implemented an asynchronous "Fate Weaving" sequence at the start
+    of a run to pre-generate realm data without freezing the main thread.
 
-## ⚙️ Setup & API Key
-To enable the full AI experience:
-1.  Obtain a free API Key from [Google AI Studio](https://aistudio.google.com/).
-2.  In the game Main Menu, click **GenAI Settings**.
-3.  Paste your key. It is saved locally in your browser's `localStorage`.
+🛠 Phase 2: Implementation (Development)
 
----
-**Developers:** Raul Velasquez & Philip  
-**Project:** DevOps/GenAI Integration Course - Task 01
+Project Structure
+
+The project was built starting with the core Game Loop, followed by the Player
+Controller, and finally the Generative AI Bridge.
+
+Key Features Developed
+
+1.  Dual-Wield Rigging: Independent arm groups for the Rune Sword and Crossbow.
+2.  Tactical Dash System: Added a high-burst movement mechanic with "I-Frames"
+    (Invincibility Frames) for skilled dodging.
+3.  Split-Damage Volleys: Upgraded the bow system to shoot triple volleys with
+    balanced damage distribution.
+4.  Prologue Cutscene: A scripted intro sequence to establish the realm's
+    narrative.
+5.  Particle Engine: A custom BufferGeometry system for ambient "Rune Dust"
+    effects.
+
+Implementation Problems & Solutions
+
+  - Problem: Code design became cluttered with global variables.
+  - Solution: Refactored the game logic into a centralized state object and
+    modularized combat functions.
+
+✅ Phase 3: Finalization & Improvement
+
+Testing & Optimization
+
+  - Performance: Used PointsMaterial for particles to ensure high FPS on all
+    devices.
+  - UX Polish: Added a "Low HP Vignette" and "Damage Flash" to provide visual
+    feedback during intense combat.
+  - Balancing: Adjusted enemy movement speed to be 30% faster for melee units to
+    increase the challenge.
+
+Finalization Problems & Solutions
+
+  - Problem: Camera flipping 360 degrees when looking straight up.
+  - Solution: Implemented a strict cameraPitch clamp between -0.10 and 0.85
+    radians.
+
+⚠️ Phase 4: Summary of Problems & Solutions
+
+| Problem                      | Solution                                                                                     |
+| :--------------------------- | :------------------------------------------------------------------------------------------- |
+| **S3 Bucket Name Conflicts** | Implemented dynamic naming using the `MY_USER` variable in Terraform.                        |
+| **Crossbow Spamming**        | Added a dynamic cooldown that increases as the player unlocks Multi-shot.                    |
+| **Static Backends**          | Created a Bash script (`setup.terraform.backend.sh`) to generate dynamic `backend.tf` files. |
+
+📜 Conclusion
+
+Through this project, we have successfully bridged the gap between game
+development and DevOps. We learned how to manage Remote State in Terraform,
+deploy complex web applications using Ansible, and utilize Generative AI to
+enhance player immersion. The final result is a scalable, automated, and
+engaging 3D experience.
+
+🎮 Controls
+
+  - W A S D: Move & Strafe
+  - SHIFT / Q: Tactical Dash (I-Frames)
+  - SPACE: High Jump
+  - LEFT CLICK: Sword Attack
+  - RIGHT CLICK: Crossbow Shot (Volley)
+  - E: Interact with Altar/Portal
+
+📦 Deployment (AWS Level 3)
+
+1.  Run bash setup.terraform.backend.sh to refresh config.
+2.  Run terraform init and terraform apply.
+3.  The server will automatically install Nginx and Ansible to deploy the game.
+
+Developers: Raul Velasquez & Philip
+Deployment Date: September 2026
+
+📽 Video Recording Script (Tip for you)
+
+To reach the 4-minute requirement on English, follow this structure:
+
+1.  0:00-0:45: Intro (Your names, project goal: GenAI + DevOps).
+2.  0:45-1:30: Show the GitHub README and explain Phase 1 & 2.
+3.  1:30-2:30: Briefly show the Terraform/Ansible code and how you solved the S3
+    naming problem.
+4.  2:30-3:45: Live Demo. Enter Valhalla, use the Dash, show the Crossbow
+    Volley, and fight a Boss.
+5.  3:45-4:00+: Conclusion (What you learned).
+
+Good luck with the recording, Raul! You are almost at the finish line! 🚀⚔️
